@@ -1633,9 +1633,9 @@ MonoBehaviour:
   manipulationModeMat: {fileID: 2100000, guid: c9a746ab7c56fcc459854162f003902b, type: 2}
   placementModeMat: {fileID: 2100000, guid: 8bfd4f2788062ba4b8c49c7975483a55, type: 2}
   paletteModeMat: {fileID: 2100000, guid: b8deb8ea4636c384faf9363c3bf59a5b, type: 2}
-  grabHighlightColor: {r: 0.23270434, g: 0.5592237, b: 1, a: 1}
-  dropHighlightColor: {r: 1, g: 0.4403339, b: 0.32549024, a: 1}
-  manipulateHighlightColor: {r: 0.43514797, g: 0.8773585, b: 0.36970446, a: 1}
+  grabHighlightColor: {r: 0.09019607, g: 0.9564519, b: 1, a: 0.4}
+  dropHighlightColor: {r: 1, g: 0.09019607, b: 0.13620226, a: 0.4}
+  manipulateHighlightColor: {r: 0.113156006, g: 1, b: 0.09019607, a: 0.4}
 --- !u!54 &795281345
 Rigidbody:
   m_ObjectHideFlags: 0

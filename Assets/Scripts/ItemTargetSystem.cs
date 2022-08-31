@@ -372,9 +372,9 @@ public class ItemTargetSystem : MonoBehaviour
         //Cleanup:
         if (slots.Count > 1 && selectedItem != null) slots.Insert(slots.IndexOf(GetSlotFromItem(selectedItem)), newSlot); //Insert item at index of currently selected item if possible
         else slots.Add(newSlot);                                                                                          //Otherwise, simply add to list
-        if (selectedItem != null) selectedItem.UnSelect();                                                                //Un-select currently-selected item
-        selectedItem = item;                                                                                              //Make this item selected
-        item.Select();                                                                                                    //Indicate to item that it has been selected
+        //if (selectedItem != null) selectedItem.UnSelect();                                                                //Un-select currently-selected item
+        //selectedItem = item;                                                                                              //Make this item selected
+        //item.Select();                                                                                                    //Indicate to item that it has been selected
         ResetSystemState();                                                                                               //Indicate that array is new
         return newSlot;                                                                                                   //Return generated position
     }
@@ -626,7 +626,8 @@ public class ItemTargetSystem : MonoBehaviour
         {
             if (selectedItem != null) //A new item has been selected
             {
-                selectedItem.Select(); //Indicate to new item that it is selected
+                if (hand.player.mode == PlayerController.InteractionMode.Collection) selectedItem.Select(hand.player.dropHighlightColor);              //Select item to be dropped
+                else if (hand.player.mode == PlayerController.InteractionMode.Manipulation) selectedItem.Select(hand.player.manipulateHighlightColor); //Select item to be manipulated
             }
             if (prevSelectedItem != null) //An item was previously selected
             {

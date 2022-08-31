@@ -74,8 +74,13 @@ public class GrabSystem : MonoBehaviour
     /// </summary>
     public void TryAddItem(ItemController item)
     {
-        if (item.grabImmunityTime > 0) return;                //Ignore item if it is currently immune to being grabbed
-        if (!hoverItems.Contains(item)) hoverItems.Add(item); //Add item to hover list if it hasn't already been added by another grabZone
+        if (item.grabImmunityTime > 0) return; //Ignore item if it is currently immune to being grabbed
+        if (!hoverItems.Contains(item))        //Item hasn't already been added by another grabZone
+        {
+            hoverItems.Add(item);                        //Add item to hover list
+            item.Select(hand.player.grabHighlightColor); //Highlight item
+        }
+            
     }
     /// <summary>
     /// Called every time a GrabZone tries to remove an item from the hoverItems list.
@@ -88,6 +93,7 @@ public class GrabSystem : MonoBehaviour
             if (zone.hoverItems.Contains(item)) return; //Do not remove item if it is still present in another active zone
         }
         hoverItems.Remove(item); //Only remove item once it has been confirmed that it is no longer present in any active grabZones
+        item.UnSelect();         //Un-highlight item
     }
     /// <summary>
     /// Called when a hovered item is grabbed. Removes hovered item at given index from system list and local lists of all GrabZones (active and inactive).
@@ -100,6 +106,7 @@ public class GrabSystem : MonoBehaviour
         //Remove item from all lists:
         foreach (GrabZone zone in grabZones) if (zone.hoverItems.Contains(item)) zone.hoverItems.Remove(item); //Search through every zone in system and remove item from local list if found
         hoverItems.Remove(item);                                                                               //Remove item from system list
+        item.UnSelect();                                                                                       //Un-highlight item
     }
     /// <summary>
     /// Returns an array of all hovered items, then clears them from all hover lists.
@@ -109,6 +116,7 @@ public class GrabSystem : MonoBehaviour
         ItemController[] items = hoverItems.ToArray();                //Save array of currently-hovered items
         foreach (GrabZone zone in grabZones) zone.hoverItems.Clear(); //Clear item list from every zone
         hoverItems.Clear();                                           //Clear system item list
+        foreach (ItemController item in items) item.UnSelect();       //Unselect each grabbed item
         return items;                                                 //Return list of all hovered items
     }
     /// <summary>

@@ -307,8 +307,9 @@ public class HandController : MonoBehaviour
     }
     private void DropItem(ItemController item)
     {
-        //Validity checks:
+        //Initialization:
         if (!heldItems.Contains(item)) return; //Ignore if target item is not actually currently held
+        heldItems.Remove(item);                //Remove dropped item from list of held items
 
         //Remove array slot:
         Transform emptySlot = item.transform.parent;     //Get slot item is childed to
@@ -325,7 +326,6 @@ public class HandController : MonoBehaviour
         }
         item.IsReleased(GetCurrentVelocity());             //Indicate to item that it has been released and apply current hand velocity
         if (grabAmount > 0) item.grabImmunityTime += 0.2f; //Give item grab immunity if player is holding grab while dropping it
-        heldItems.Remove(item);                            //Remove dropped item from list of held items
     }
     private void PlaceItems()
     {

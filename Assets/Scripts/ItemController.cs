@@ -8,8 +8,9 @@ using UnityEngine;
 public class ItemController : MonoBehaviour
 {
     //Objects & Components:
-    private Renderer[] renderers; //Array of all render components on or childed to this object
-    internal Rigidbody rb;        //Rigidbody component for this object
+    private Renderer[] renderers;          //Array of all render components on or childed to this object
+    private Renderer[] highlightRenderers; //Array of all render components used to highlight this object
+    internal Rigidbody rb;                 //Rigidbody component for this object
 
     [Tooltip("Reference to prefab object which this item came from")]                                  public GameObject prefab;
     [Tooltip("Prefab for semi-transparent clone of this object, used for placement and manipulation")] public GameObject ghost;
@@ -67,14 +68,15 @@ public class ItemController : MonoBehaviour
     private void Awake()
     {
         //Get objects & components:
-        List<Renderer> renderComponents = new List<Renderer>(GetComponents<Renderer>()); //Get renderer components on object
-        renderComponents.AddRange(GetComponentsInChildren<Renderer>());                  //Get renderer components from children
-        renderers = renderComponents.ToArray();                                          //Get list of renderers as array
-        rb = GetComponent<Rigidbody>();                                                  //Get rigidbody component
-    }
-    private void Start()
-    {
-        foreach (Renderer renderer in renderers) renderer.material.color = Color.black; //TEMP
+        highlightRenderers = transform.Find("Highlight").GetComponentsInChildren<Renderer>();                    //Get renderers used for highlights
+        List<Renderer> renderComponents = new List<Renderer>(GetComponents<Renderer>());                         //Get renderer components on object
+        renderComponents.AddRange(GetComponentsInChildren<Renderer>());                                          //Get renderer components from children
+        foreach (Renderer r in highlightRenderers) if (renderComponents.Contains(r)) renderComponents.Remove(r); //Remove highlight renderers from list of normal renderers
+        renderers = renderComponents.ToArray();                                                                  //Get list of renderers as array
+        rb = GetComponent<Rigidbody>();                                                                          //Get rigidbody component
+
+        //Initialize:
+        UnSelect(); //Hide highlight renderers
     }
     private void Update()
     {
@@ -127,17 +129,30 @@ public class ItemController : MonoBehaviour
     /// <summary>
     /// Call this when this item is selected.
     /// </summary>
-    public void Select()
+    public void Select(Color highlightColor)
     {
+        //Enable highlight:
+        foreach (Renderer hr in highlightRenderers) //Iterate through highlight renderers
+        {
+            hr.material.color = highlightColor; //Set highlight color
+            hr.enabled = true;                  //Make highlight visible
+        }
+
+        //Cleanup:
         selected = true; //Indicate that item is now selected
-        foreach (Renderer renderer in renderers) renderer.material.color = Color.white; //TEMP (replace with highlight)
     }
     /// <summary>
     /// Cancels item selection state.
     /// </summary>
     public void UnSelect()
     {
+        //Disable highlight:
+        foreach (Renderer hr in highlightRenderers) //Iterate through highlight renderers
+        {
+            hr.enabled = false; //Make highlight invisible
+        }
+
+        //Cleanup:
         selected = false; //Indicate that item is no longer selected
-        foreach (Renderer renderer in renderers) renderer.material.color = Color.black; //TEMP (replace with highlight)
     }
 }

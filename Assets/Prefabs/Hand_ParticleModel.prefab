@@ -507,7 +507,7 @@ MonoBehaviour:
   placementIgnoreMask:
     serializedVersion: 2
     m_Bits: 192
-  placementHeightOffset: 0.5
+  placementHeightOffset: 0.7
   stowTime: 0.2
   stowEffectCurve:
     serializedVersion: 2
