@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Events;
 
 /// <summary>
 /// Manages input separately between hands and organizes held items using various scripts on child objects. Gets all inspector settings from unifying PlayerController.
@@ -34,12 +35,32 @@ public class HandController : MonoBehaviour
     internal bool isSecondary = false;                                    //Indicates that this hand's interactions are affecting objects in the other hand
     internal bool isLeft = false;                                         //Indicates that this is the left hand
 
+    //Events & Delegates:
+    /// <summary>
+    /// Called when other hand begins manipulating this hand's items.
+    /// </summary>
+    public UnityAction onDualManipulationBegin;
+    /// <summary>
+    /// Called when other hand stops manipulating that hand's items.
+    /// </summary>
+    public UnityAction onDualManipulationEnd;
+
     //RUNTIME METHODS:
     private void Start()
     {
         //Get objects & components:
         player = GetComponentInParent<PlayerController>();                                                  //Get player controller component
         if (name.Contains("Left")) { player.leftHand = this; isLeft = true; } else player.rightHand = this; //Give player controller a copy of this script
+
+        //Event subscriptions:
+        onDualManipulationBegin += OnDualManipulationBegin; //Subscribe to own event (to avoid non-subscription errors)
+        onDualManipulationEnd += OnDualManipulationEnd;     //Subscribe to own event (to avoid non-subscription errors)
+    }
+    private void OnDisable()
+    {
+        //Event unsubscriptions:
+        onDualManipulationBegin -= OnDualManipulationBegin; //Unsubscribe from manipulation begin event
+        onDualManipulationEnd -= OnDualManipulationEnd;     //Unsubscribe from manipulation end event
     }
     private void Update()
     {
@@ -93,9 +114,25 @@ public class HandController : MonoBehaviour
                 }
                 else if (heldItems.Count > 1) //Player is currently holding an array of items
                 {
-                    if (targetSystem.freshArray && arraySizeAdjust != 0) targetSystem.freshArray = false; //Indicate that current array has been modified
-                    targetSystem.RotateArray(-arrayRotAdjust * Time.deltaTime);                           //Apply adjustment value to array rotation
-                    targetSystem.AdjustArraySize(arraySizeAdjust * Time.deltaTime);                       //Apply adjustment value to array size
+                    if (OtherHand().isSecondary) //The other hand is manipulating items in this hand
+                    {
+                        switch (targetSystem.currentArrayType) //Determine level of control based on target system array type
+                        {
+                            case ItemTargetSystem.ItemArrayType.Linear: //Modified controls for linear array
+                                arrayShift = arrayRotAdjust;                          //Use rotation control to shift linear array instead
+                                targetSystem.ShiftArray(arrayShift * Time.deltaTime); //Allow array to be shifted side to side
+                                break;
+                            case ItemTargetSystem.ItemArrayType.Circular: //Modified controls for circular array
+                                targetSystem.AdjustArraySize(arraySizeAdjust * Time.deltaTime); //Allow array size adjustment
+                                break;
+                        }
+                    }
+                    else //This hand is performing manipulation alone/normally
+                    {
+                        targetSystem.RotateArray(-arrayRotAdjust * Time.deltaTime);     //Allow array rotation
+                        targetSystem.AdjustArraySize(arraySizeAdjust * Time.deltaTime); //Allow array size adjustment
+                    }
+                    if (targetSystem.freshArray && arraySizeAdjust != 0) targetSystem.freshArray = false; //Indicate that current array has been modified (if this is the case)
                 }
             }
         }
@@ -296,6 +333,16 @@ public class HandController : MonoBehaviour
                 PlaceItems(); //Place all currently-held items
             }
         }
+    }
+
+    //EVENTS:
+    private void OnDualManipulationBegin()
+    {
+
+    }
+    private void OnDualManipulationEnd()
+    {
+
     }
 
     //FUNCTIONALITY METHODS:

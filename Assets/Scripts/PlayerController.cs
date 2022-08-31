@@ -10,6 +10,9 @@ public class PlayerController : MonoBehaviour
     public enum Side { None, Left, Right}
     public enum InteractionMode { Collection, Manipulation, Placement, Palette }
 
+    //Statics:
+    public static PlayerController main; //Singleton instance of PlayerController in scene
+
     //Objects & Components:
     internal HandController leftHand;  //Controller script for left hand object
     internal HandController rightHand; //Controller script for right hand object
@@ -40,7 +43,19 @@ public class PlayerController : MonoBehaviour
     internal InteractionMode prevMode = InteractionMode.Collection; //Previous mode interaction system was in
     private bool proximityModeOn;                                   //Indicates that hands are close enough together to initiate dual interaction mode (if applicable). Does not necessarily mean hands are in this mode, just that they can be
 
+    //Events & Delegates:
+    public delegate void ModeChangeEvent(InteractionMode newMode); //Delegate for passing new mode upon mode change
+    /// <summary>
+    /// Event called every time interaction mode is changed.
+    /// </summary>
+    public ModeChangeEvent onModeChanged;
+
     //RUNTIME METHODS:
+    private void Awake()
+    {
+        //Initialize:
+        if (main == null) main = this; else Destroy(this); //Singleton-ize this script
+    }
     private void Start()
     {
         //Get objects & components:
@@ -115,7 +130,8 @@ public class PlayerController : MonoBehaviour
         }
 
         //Cleanup:
-        CheckProximityMode(); //Immediately update proximity mode (validity may have changed)
+        CheckProximityMode();   //Immediately update proximity mode (validity may have changed)
+        onModeChanged(newMode); //Trigger events which are called upon mode change
     }
     /// <summary>
     /// Switches to next mode in triangular rotation.
@@ -138,6 +154,8 @@ public class PlayerController : MonoBehaviour
     private void CheckProximityMode()
     {
         //Initialize:
+        bool prevLeftSecondary = leftHand.isSecondary;   //Get previous secondary manipulation status of left hand
+        bool prevRightSecondary = rightHand.isSecondary; //Get previous secondary manipulation status of right hand
         if (mode == InteractionMode.Collection || //Proximity mode is not available for collection
             mode == InteractionMode.Palette)      //Proximity mode is not available for palette
         {
@@ -146,6 +164,10 @@ public class PlayerController : MonoBehaviour
                 proximityModeOn = false;       //Indicate that proximity mode is off
                 leftHand.isSecondary = false;  //Make sure left hand is not secondary
                 rightHand.isSecondary = false; //Make sure right hand is not secondary
+
+                //Status change triggers:
+                if (prevLeftSecondary) rightHand.onDualManipulationEnd(); //Trigger manipulation end event on right hand
+                if (prevRightSecondary) leftHand.onDualManipulationEnd(); //Trigger manipulation end event on left hand
             }
             return; //Do not perform further checks
         }
@@ -185,6 +207,17 @@ public class PlayerController : MonoBehaviour
             rightHand.isSecondary = false;                //Make sure right hand is not secondary
             leftHand.doingSecondaryManipulation = false;  //Make sure left hand is no longer doing secondary manipulation
             rightHand.doingSecondaryManipulation = false; //Make sure right hand is no longer doing secondary manipulation
+        }
+        //Status change triggers:
+        if (prevLeftSecondary != leftHand.isSecondary) //Left hand manipulation status has changed
+        {
+            if (leftHand.isSecondary) rightHand.onDualManipulationBegin(); //Trigger manipulation begin event on right hand
+            else rightHand.onDualManipulationEnd();                        //Trigger manipulation end event on right hand
+        }
+        if (prevRightSecondary != rightHand.isSecondary) //Right hand manipulation status has changed
+        {
+            if (rightHand.isSecondary) leftHand.onDualManipulationBegin(); //Trigger manipulation begin event on right hand
+            else leftHand.onDualManipulationEnd();                         //Trigger manipulation end event on right hand
         }
     }
 }

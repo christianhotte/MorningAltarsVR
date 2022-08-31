@@ -69,6 +69,18 @@ public class ItemTargetSystem : MonoBehaviour
         //Get objects & components:
         hand = GetComponentInParent<HandController>(); //Get hand controller from hierarchy
         hand.targetSystem = this;                      //Send hand a reference to this script
+
+        //Event subscriptions:
+        PlayerController.main.onModeChanged += OnInteractionModeChanged; //Subscribe to interactionmode change event
+        hand.onDualManipulationBegin += OnDualManipulationBegin;         //Subscribe to dual manipulation begin event
+        hand.onDualManipulationEnd += OnDualManipulationEnd;             //Subscribe to dual manipulation end event
+    }
+    private void OnDisable()
+    {
+        //Event unsubscriptions:
+        PlayerController.main.onModeChanged -= OnInteractionModeChanged; //Unsubscribe from interactionmode change event
+        hand.onDualManipulationBegin -= OnDualManipulationBegin;         //Unsubscribe from dual manipulation begin event
+        hand.onDualManipulationEnd -= OnDualManipulationEnd;             //Unsubscribe from dual manipulation end event
     }
     private void FixedUpdate()
     {
@@ -157,7 +169,7 @@ public class ItemTargetSystem : MonoBehaviour
         UpdateSelectedItem();       //Update to determine which item is selected (if any)
         if (slots.Count > 1 &&      //Items are in an array
             selectedItem != null && //An item is selected
-            hand.arrayShift == 0)   //Player is not currently manipulating array velocity
+            hand.arrayShift == 0)   //Player is not currently manipulating selection
         {
             //Snap to selected object:
             int selectedIndex = slots.IndexOf(GetSlotFromItem(selectedItem)); //Get index of slot holding selected item
@@ -280,12 +292,13 @@ public class ItemTargetSystem : MonoBehaviour
                     else if (currentArrayType == ItemArrayType.Linear) //Simulate linear array target placement
                     {
                         float setback = (currentLinearSeparation * (slots.Count - 1)) / 2; //Calculate setback based on math used to place normal linear array targets
+                        float a = currentArrayRotation * (hand.isLeft ? -1 : 1);           //Get rotation angle to apply to each item (flip for left hand)
                         for (int i = 0; i < slots.Count; i++) //Iterate through each slot in system
                         {
-                            Vector3 newPoint = surfaceRight * ((i * currentLinearSeparation) - setback);     //Initialize point at world zero and offset plane-aligned x value by setback and linear separation (centering array)
-                            newPoint *= scaleCorrection;                                                     //Apply scaling correction
-                            newPoint = Quaternion.AngleAxis(currentArrayRotation, surfaceNormal) * newPoint; //Rotate point around world zero to match current array rotation
-                            targetPoints.Add(newPoint + centerPoint);                                        //Move point to position of speculative array and add to list
+                            Vector3 newPoint = surfaceRight * ((i * currentLinearSeparation) - setback); //Initialize point at world zero and offset plane-aligned x value by setback and linear separation (centering array)
+                            newPoint *= scaleCorrection;                                                 //Apply scaling correction
+                            newPoint = Quaternion.AngleAxis(a, surfaceNormal) * newPoint;                //Rotate point around world zero to match current array rotation
+                            targetPoints.Add(newPoint + centerPoint);                                    //Move point to position of speculative array and add to list
                         }
                     }
 
@@ -330,6 +343,38 @@ public class ItemTargetSystem : MonoBehaviour
         }
     }
 
+    //EVENTS:
+    private void OnInteractionModeChanged(PlayerController.InteractionMode newMode)
+    {
+        if (currentArrayType == ItemArrayType.Linear) //Mode change triggers for linear array
+        {
+            //Two-way mode switch triggers:
+            currentArrayOffset = 0; //Zero out linear array offset when changing modes
+
+            //One-way mode switch triggers:
+            if (newMode == PlayerController.InteractionMode.Collection) //System is switching into collection mode
+            {
+                currentArrayRotation = 0; //Reset array rotation to zero (to ensure linear array is locked in sideways alignment)
+            }
+        }
+    }
+    private void OnDualManipulationBegin()
+    {
+        if (currentArrayType == ItemArrayType.Linear) //Beginning dual manipulation of a linear array
+        {
+            recordedLinearSeparation = currentLinearSeparation; //Record current linear separation
+            currentArrayRotation = 0;                           //Reset array rotation
+            ApplyItemBounds();                                  //Reset array size
+        }
+    }
+    private void OnDualManipulationEnd()
+    {
+        if (currentArrayType == ItemArrayType.Linear) //Ending dual manipulation of a linear array
+        {
+            currentArrayOffset = 0; //Reset array offset
+        }
+    }
+
     //FUNCTIONALITY METHODS:
     /// <summary>
     /// Switches between circular and linear array types.
@@ -337,8 +382,15 @@ public class ItemTargetSystem : MonoBehaviour
     public void SwitchArrayType()
     {
         //Toggle array type:
-        if (currentArrayType == ItemArrayType.Circular) currentArrayType = ItemArrayType.Linear;      //Switch from circular to linear array
-        else if (currentArrayType == ItemArrayType.Linear) currentArrayType = ItemArrayType.Circular; //Switch from linear to circular array
+        switch (currentArrayType) //Determine switching behavior based on current array
+        {
+            case ItemArrayType.Circular: //Array is currently circular
+                currentArrayType = ItemArrayType.Linear; //Switch to linear array
+                break;
+            case ItemArrayType.Linear: //Array is currently linear
+                currentArrayType = ItemArrayType.Circular; //Switch to circular array
+                break;
+        }
 
         //Cleanup:
         currentArrayRotation = 0; //Reset array rotation
@@ -372,9 +424,6 @@ public class ItemTargetSystem : MonoBehaviour
         //Cleanup:
         if (slots.Count > 1 && selectedItem != null) slots.Insert(slots.IndexOf(GetSlotFromItem(selectedItem)), newSlot); //Insert item at index of currently selected item if possible
         else slots.Add(newSlot);                                                                                          //Otherwise, simply add to list
-        //if (selectedItem != null) selectedItem.UnSelect();                                                                //Un-select currently-selected item
-        //selectedItem = item;                                                                                              //Make this item selected
-        //item.Select();                                                                                                    //Indicate to item that it has been selected
         ResetSystemState();                                                                                               //Indicate that array is new
         return newSlot;                                                                                                   //Return generated position
     }
@@ -454,7 +503,7 @@ public class ItemTargetSystem : MonoBehaviour
     {
         //Initialize:
         if (addedValue == 0) return;                                 //Ignore if given value is zero
-        if (activeGhost != null) return;                             //Ignore if there is an active ghost
+        //if (activeGhost != null) return;                             //Ignore if there is an active ghost
         float adjustedValue = addedValue * rotationAdjustMultiplier; //Apply multiplier to given adjustment value
 
         //Modify overall array rotation:
